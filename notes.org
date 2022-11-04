@@ -1,0 +1,75 @@
+* Notes
+Example 'DocumentsController' with a related show method:
+#+begin_src ruby
+  def show
+    document = Document.find(params[:id])
+    render json: document
+  end
+#+end_src
+
+NOTE:
+- The only technical explanation that helps explain 'how' users login is to add the user's ':user_id' to the 'session' hash
+
+You can add a 'guard clause' to the first line of the 'DocumentsController#show' method:
+#+begin_src ruby
+  def show
+    return render json: { error: "Not authorized" }, status: :unauthorized unless session.include? :user_id
+    document = Document.find(params[:id])
+    render json: document
+  end
+#+end_src
+
+This basically means that unless the current 'session' includes ':user_id', an error should be returned.
+
+If a user is not logged in, we can return the '401 unauthorized' status code.
+
+We can use the 'before' action from 'ActionController' class method, 'before_action' to include this type of method as a separate private 'authorize' method. 'before_action' registers a filter which is a method that runs before, after, or around a controller's action. The filter runs before all of the 'DocumentsController' controller's actions and kicks out requests with '401 unauthorized' unless they're logged in
+#+begin_src ruby
+  class DocumentsController < ApplicationController
+    before_action :authorize
+
+    def show
+      document = Document.find(params[:id])
+      render json: document
+    end
+
+    def index
+      documents = Document.all()
+      render json: documents
+    end
+
+    def create
+      document = Document.create(author_id: session[:user_id])
+      render json: document, status: :created
+    end
+
+    private
+
+    def authorize
+      return render json: { error: "Not Authorized" }, status: :unauthorized unless session.include? :user_id
+    end
+  end
+#+end_src
+
+Related Docs page for 'before_action' from Rails Docs:
+- https://guides.rubyonrails.org/action_controller_overview.html#filters
+
+You could also skip the 'before_action' for specific Controller action methods by using the 'skip_before_action' keyword followed by the name of the method.
+
+For example, if we wanted to let all users view documents on a website via the 'index' method, we could do the following:
+
+The 'skip_before_action :authorize, only: [:index]' section below tells Rails to skip the 'authorize' filter for the 'index' action for the 'DocumentController' controller's actions:
+#+begin_src ruby
+  class DocumentController < ApplicationController
+    before_action :authorize
+    skip_before_action :authorize, only: [:index]
+  end
+#+end_src
+
+Answers To Check Your Understanding:
+- Q1. What is the difference between authentication and authorization?
+- Answer: Authentication means to confirm that the user is who they say they are. Authorization means to allow a given user some permissions to access specific resources of an application
+- Q2. What Rails method can we use to add an authorization step before each of the actions in our controller?
+- Answer: We can use the 'before_action' method to allow an additional authorization step before any action is run within a given Rails Controller
+- Q3. What Rails method can we use to exclude one or more of the actions from the authorization step?
+- Answer: We can use 'skip_before_action' to exclude one or more of the actions of a Rails Controller from the authorization step, ex: Using the 'skip_before_action' to allow a user to view the contents of a document via the 'index' method on the related 'DocumentsController' controller.
